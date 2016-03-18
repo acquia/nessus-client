@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'thor'
 require 'nessus-client'
 require 'yaml'
 require 'uri'
@@ -17,7 +18,7 @@ class Nessus < Thor
 
   @@creds = nil
 
-  no_tasks do
+  no_commands do
 
     # Common workflow Thor options
     def self.common_options
@@ -69,7 +70,7 @@ class Nessus < Thor
     method_option :since, :desc => "Last modification date. Show only scans changed since then. Default 7 days."
     Nessus.common_options
     def list
-      creds = Nessus.creds
+      creds = Nessus.creds(options[:home])
       params = {}
       if options[:since]
          since = DateTime.parse(options[:since]).to_time.to_i
@@ -87,6 +88,7 @@ class Nessus < Thor
   end
 
 
+  desc "scans", "Scan related commands"
   subcommand 'scans', Nessus::Scans
 
 end
