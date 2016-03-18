@@ -7,17 +7,14 @@ require 'uri'
 require 'date'
 require 'terminal-table'
 
-class Nessus < Thor
+
+class NessusBase < Thor
 
   # Thor thinks its a good idea to not exit(1) when something bad
   # happens, like bad command line arguments.  We disagree.
   def self.exit_on_failure?
     true
   end
-
-  CREDS_FILE = ".nessus.yml"
-
-  @@creds = nil
 
   no_commands do
 
@@ -29,6 +26,17 @@ class Nessus < Thor
     def self.common_list_options
       method_option :columns, :aliases => '-c', :type => :array, :default => ['id', 'name'], :desc => 'List of columns to display in a table'
     end
+  end
+
+end
+
+class Nessus < NessusBase
+
+  CREDS_FILE = ".nessus.yml"
+
+  @@creds = nil
+
+  no_commands do
 
     def self.creds(home)
       unless @@creds
@@ -98,13 +106,12 @@ class Nessus < Thor
      session.destroy
   end
 
-  class Scans < Thor
+  class Scans < NessusBase
     desc "scans list", "List scans since a given date"
-    method_option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
     method_option :folder_id, :type => :numeric, :desc => "Folder ID"
     method_option :since, :desc => "Last modification date. Show only scans changed since then. Default 7 days."
-    Nessus.common_list_options
-    Nessus.common_options
+    self.common_list_options
+    self.common_options
     def list
       creds = Nessus.creds(options[:home])
       params = {}
@@ -125,7 +132,7 @@ class Nessus < Thor
       end
       if result['scans'].length > 0
         columns = result['scans'].first.keys
-        say('Available columns: ' + columns.join(', '))
+        say("Available columns:\n" + columns.join(', '))
       end
     end
   end
