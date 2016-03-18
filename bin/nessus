@@ -5,6 +5,7 @@ require 'nessus-client'
 require 'yaml'
 require 'uri'
 require 'date'
+require 'terminal-table'
 
 class Nessus < Thor
 
@@ -25,6 +26,10 @@ class Nessus < Thor
       method_option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
     end
 
+    def self.common_list_options
+      method_option :fields, :type => :array, :default => ['id', 'name'], :desc => 'List of columns to display in a table'
+    end
+
     def self.creds(home)
       unless @@creds
         creds_file = File.join(home, CREDS_FILE)
@@ -35,6 +40,36 @@ class Nessus < Thor
         end
       end
       @@creds
+    end
+
+    # Display a table to the user. The provided block should an Array of
+    # row values.
+    #
+    # @param enum [Enumerator]
+    # @param cols [Array]
+    #   List of column headers.
+    # @param title [String]
+    #   Optional table title.
+    # @yield elem [Object]
+    #   The current object in the enumeration.
+    # @return nil
+    def self.table_for(enum, cols, title = nil)
+      rows = []
+      enum.each do |elem|
+        rows << yield(elem)
+      end
+
+      puts Terminal::Table.new(
+        :title => title,
+        :headings => cols,
+        :rows => rows,
+        :style => {
+          :border_x => '-',
+          :border_y => '',
+          :border_i => '',
+          :padding_left => 0,
+          :padding_right => 2
+        })
     end
   end
 
@@ -69,6 +104,7 @@ class Nessus < Thor
     method_option :folder_id, :type => :numeric, :desc => "Folder ID"
     method_option :since, :desc => "Last modification date. Show only scans changed since then. Default 7 days."
     Nessus.common_options
+    Nessus.common_list_options
     def list
       creds = Nessus.creds(options[:home])
       params = {}
@@ -83,7 +119,10 @@ class Nessus < Thor
         params = options[:folder_id]
       end
       client = NessusClient.new(creds['url'], creds['accessKey'], creds['secretKey'])
-      puts client.get('/scans', params).inspect
+      result = client.get('/scans', params)
+      Nessus.table_for(result['scans'], options['fields'], "Scans since #{Time.at(since).to_s}") do |scan|
+        options.fields.map { |column| scan[column] }
+      end
     end
   end
 
