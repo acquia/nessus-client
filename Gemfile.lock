@@ -1,0 +1,18 @@
+PATH
+  remote: .
+  specs:
+    nessus-client (0.0.1)
+      excon (= 0.45.0)
+      thor (= 0.19.1)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    excon (0.45.0)
+    thor (0.19.1)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  nessus-client!

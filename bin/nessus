@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+
+require 'nessus-client'
+require 'yaml'
+
+class Nessus < Thor
+
+  # Thor thinks its a good idea to not exit(1) when something bad
+  # happens, like bad command line arguments.  We disagree.
+  def self.exit_on_failure?
+    true
+  end
+
+  @@creds = nil
+end
+
+begin
+  Nessus.start
+rescue => e
+  puts "ERROR - " + e.message
+  puts e.backtrace.first
+  exit(1)
+end
