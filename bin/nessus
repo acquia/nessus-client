@@ -3,6 +3,7 @@
 require 'nessus-client'
 require 'yaml'
 require 'uri'
+require 'date'
 
 class Nessus < Thor
 
@@ -12,15 +13,37 @@ class Nessus < Thor
     true
   end
 
+  CREDS_FILE = ".nessus.yml"
+
   @@creds = nil
 
-  desc "get-api-key NESSUS_URL", "Use username and password (interactive prompt) to generate an API key for Nessus and save to .nessus.yml"
-  option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
-  option :yes, :aliases => '-y', :type => :boolean, :desc => 'Skip prompts for confirmation'
+  no_tasks do
+
+    # Common workflow Thor options
+    def self.common_options
+      method_option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
+    end
+
+    def self.creds(home)
+      unless @@creds
+        creds_file = File.join(home, CREDS_FILE)
+        file ("Missing file #{creds_file}") unless File.exist?(creds_file)
+        @@creds = YAML.load(File.read(creds_file))
+        ['url', 'secretKey', 'accessKey'].each do |key|
+          fail("Missing #{key} value in #{creds_file}")
+        end
+      end
+      @@creds
+    end
+  end
+
+  desc "get-api-key NESSUS_URL", "Use username and password (interactive prompt) to generate an API key for Nessus and save to #{CREDS_FILE}"
+  method_option :yes, :aliases => '-y', :type => :boolean, :desc => 'Skip prompts for confirmation'
+  self.common_options
   def get_api_key(nessus_url)
      uri = URI(nessus_url)
      fail("You nees to use a https:// URL for Nessus") unless uri.scheme == 'https'
-     creds_file = File.join(options[:home], '.nessus.yml')
+     creds_file = File.join(options[:home], CREDS_FILE)
      if File.exist?(creds_file) && !options[:yes]
        confirm = ask("Overwrite existing file #{creds_file} ?", :yellow, limited_to: ['yes', 'no'], :default => 'yes')
        if confirm != 'yes'
@@ -38,6 +61,34 @@ class Nessus < Thor
      say("New API keys written to #{creds_file}")
      session.destroy
   end
+
+  class Scans < Thor
+    desc "scans list", "list"
+    method_option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
+    method_option :folder_id, :type => :numeric, :desc => "Folder ID"
+    method_option :since, :desc => "Last modification date. Show only scans changed since then. Default 7 days."
+    Nessus.common_options
+    def list
+      creds = Nessus.creds
+      params = {}
+      if options[:since]
+         since = DateTime.parse(options[:since]).to_time.to_i
+      else
+        # Default to 7 days ago.
+        since = Time.now.to_i - (7 * 24 * 3600)
+      end
+      params['last_modification_date'] = since
+      if options[:folder_id]
+        params = options[:folder_id]
+      end
+      client = NessusClient.new(creds['url'], creds['accessKey'], creds['secretKey'])
+      puts client.get('/scans', params).inspect
+    end
+  end
+
+
+  subcommand 'scans', Nessus::Scans
+
 end
 
 begin
