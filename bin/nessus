@@ -35,8 +35,8 @@ class Nessus < Thor
      keys = session.keys
      keys = {'url' => nessus_url}.merge(keys)
      File.write(creds_file, keys.to_yaml)
-     session.delete
      say("New API keys written to #{creds_file}")
+     session.destroy
   end
 end
 
