@@ -31,7 +31,7 @@ class NessusClient
       body = payload ? payload.to_json : ''
       response = connection.request(method: method, path: path, body: body, headers: headers, idempotent: true, expects: [200, 201])
       if response.body.length > 0
-        JSON.decode(response.body)
+        JSON.parse(response.body)
       end
     end
 
