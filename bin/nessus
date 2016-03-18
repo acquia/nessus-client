@@ -121,7 +121,11 @@ class Nessus < Thor
       client = NessusClient.new(creds['url'], creds['accessKey'], creds['secretKey'])
       result = client.get('/scans', params)
       Nessus.table_for(result['scans'], options['columns'], "Scans since #{Time.at(since).to_s}") do |scan|
-        options['columns'].map { |column| scan[column] }
+        options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
+      end
+      if result['scans'].length > 0
+        columns = result['scans'].first.keys
+        say('Available columns: ' + columns.join(', '))
       end
     end
   end
