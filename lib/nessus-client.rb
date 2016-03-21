@@ -16,9 +16,7 @@ class NessusClient
 
   def get(path, params = {})
    options = {}
-   if params.length > 0
-     options[:query] = params.to_h
-   end
+   options[:query] = params.to_h if params.length > 0
    options[:idempotent] = true
    request('GET', path, options)
   end
@@ -36,8 +34,6 @@ class NessusClient
       options[:body] = options[:body].to_json
     end
     response = connection.request(options)
-    if response.body.length > 0
-      JSON.parse(response.body)
-    end
+    JSON.parse(response.body) if response.body.length > 0
   end
 end

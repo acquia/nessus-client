@@ -68,15 +68,15 @@ class Nessus < NessusBase
       end
 
       puts Terminal::Table.new(
-        :title => title,
-        :headings => cols,
-        :rows => rows,
-        :style => {
-          :border_x => '-',
-          :border_y => '',
-          :border_i => '',
-          :padding_left => 0,
-          :padding_right => 2
+        title: title,
+        headings: cols,
+        rows: rows,
+        style: {
+          border_x: '-',
+          border_y: '',
+          border_i: '',
+          padding_left: 0,
+          padding_right: 2
         })
     end
   end
@@ -89,7 +89,7 @@ class Nessus < NessusBase
      fail("You nees to use a https:// URL for Nessus") unless uri.scheme == 'https'
      creds_file = File.join(options[:home], CREDS_FILE)
      if File.exist?(creds_file) && !options[:yes]
-       confirm = ask("Overwrite existing file #{creds_file} ?", :yellow, limited_to: ['yes', 'no'], :default => 'yes')
+       confirm = ask("Overwrite existing file #{creds_file} ?", :yellow, limited_to: %w(yes no), default: 'yes')
        if confirm != 'yes'
          say("Aborting command", :red)
          exit
@@ -108,8 +108,8 @@ class Nessus < NessusBase
 
   class Scans < NessusBase
     desc "scans list", "List scans since a given date"
-    method_option :folder_id, :type => :numeric, :desc => "Folder ID"
-    method_option :since, :desc => "Last modification date. Show only scans changed since then. Default 7 days."
+    method_option :folder_id, :type => :numeric, :desc => 'Folder ID'
+    method_option :since, :desc => 'Last modification date. Show only scans changed since then. Default 7 days.'
     self.common_list_options
     self.common_options
     def list
