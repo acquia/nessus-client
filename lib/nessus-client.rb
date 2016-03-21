@@ -34,6 +34,52 @@ class NessusClient
       options[:body] = options[:body].to_json
     end
     response = connection.request(options)
-    JSON.parse(response.body) if response.body.length > 0
+    JSON.parse(response.body) if (response.body.length > 0 && response.headers['content-type'].match(/json/))
+  end
+
+  def download_report
+  end
+
+  # Exception thrown when a retry times out
+  class TimeoutException < RuntimeError
+  end
+
+  # Retry a block of code multiple times until it returns true, or until
+  # time limit ais reached. This always runs the block at least once.
+  #
+  # Options:
+  #
+  #  [:delay]  Sleep the given number of seconds between each try.
+  #            The default to sleep 2 seconds.
+  #
+  #  [:timeout] Don't try for longer than the given number of seconds.
+  #
+  #  [:message] A message that describes what is being attempted.
+  #
+  #  [:stdout] An IO object to write messages to. Defaults to $stdout.
+  #
+  def self.retry(opts = {}, &blk)
+    opts = {
+      delay: 2,
+      timeout: 30,
+      stdout: $stdout,
+    }.merge(opts)
+
+    d = opts[:delay]
+    io = opts[:stdout]
+    times = 0
+    start_time = Time.now.to_f
+    stop_time = Time.now.to_i + opts[:timeout]
+    io.puts "Waiting for: #{opts[:message]}" if opts[:message]
+    begin
+      sleep(d) if times > 0
+      times += 1
+      result = blk.call(times)
+      if (!result) &&(Time.now.to_f - start_time) >= opts[:timeout]
+        raise TimeoutException.new("Timeout after #{opts[:timeout]} sec.")
+      end
+      io.puts "+ retry: #{stop_time-Time.now.to_i} secs left"
+    end while (!result)
+    result
   end
 end
