@@ -14,11 +14,22 @@ class NessusClient
     @secret_key = secret_key
   end
 
-  def get(path, params = {})
+  def get(path, query = {})
    options = {}
-   options[:query] = params.to_h if params.length > 0
+   options[:query] = query.to_h if query.length > 0
    options[:idempotent] = true
-   request('GET', path, options)
+   json_request('GET', path, options)
+  end
+
+  def json_request(method, path, options = {})
+    if options[:body] && !options[:body].instance_of?(String)
+      options[:body] = options[:body].to_json
+    end
+    options[:headers] ||= {}
+    options[:headers]['Content-Type'] = 'application/json'
+    }.merge(options[:headers])
+    response = request(method, path, options)
+    JSON.parse(response.body) if (response.body.length > 0 && response.headers['content-type'].match(/json/))
   end
 
   def request(method, path, options = {})
@@ -26,15 +37,8 @@ class NessusClient
     options[:method] = method
     options[:path] = path
     options[:headers] ||= {}
-    options[:headers] = {
-      'X-ApiKeys' => "accessKey=#{@access_key}; secretKey=#{@secret_key}",
-      'Content-Type' => 'application/json',
-    }.merge(options[:headers])
-    if options[:body] && !options[:body].instance_of?(String)
-      options[:body] = options[:body].to_json
-    end
-    response = connection.request(options)
-    JSON.parse(response.body) if (response.body.length > 0 && response.headers['content-type'].match(/json/))
+    options[:headers]['X-ApiKeys'] = "accessKey=#{@access_key}; secretKey=#{@secret_key}"
+    connection.request(options)
   end
 
   def download_report
