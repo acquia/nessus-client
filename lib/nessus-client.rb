@@ -27,7 +27,6 @@ class NessusClient
     end
     options[:headers] ||= {}
     options[:headers]['Content-Type'] = 'application/json'
-    }.merge(options[:headers])
     response = request(method, path, options)
     JSON.parse(response.body) if (response.body.length > 0 && response.headers['content-type'].match(/json/))
   end
