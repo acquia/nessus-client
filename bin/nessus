@@ -137,7 +137,7 @@ class Nessus < NessusBase
       end
     end
 
-    desc "scan download SCAN_ID", 'Download the most recent results for a scan identified by a numeric ID'.
+    desc "scan download SCAN_ID", 'Download the most recent results for a scan identified by a numeric ID'
     self.common_options
     def download(scan_id)
       client = self.client(options[:home])
@@ -147,7 +147,7 @@ class Nessus < NessusBase
   end
 
   desc "scan", "Scan related commands"
-  subcommand 'scan', Nessus::Scans
+  subcommand 'scan', Nessus::Scan
 
 end
 
