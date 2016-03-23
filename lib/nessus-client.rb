@@ -14,11 +14,18 @@ class NessusClient
     @secret_key = secret_key
   end
 
-  def get(path, query = {})
-   options = {}
+  # Make a GET request expecting a JSON response.
+  def get(path, query = {}, options = {})
    options[:query] = query.to_h if query.length > 0
    options[:idempotent] = true
    json_request('GET', path, options)
+  end
+
+  # Make a POST request expecting a JSON response.
+  def post(path, body, query = {}, options = {})
+   options[:query] = query.to_h if query.length > 0
+   options[:body] = body
+   json_request('POST', path, options)
   end
 
   def json_request(method, path, options = {})
@@ -33,6 +40,7 @@ class NessusClient
 
   def request(method, path, options = {})
     connection = Excon.new(url)
+    options[:expects] ||= [200]
     options[:method] = method
     options[:path] = path
     options[:headers] ||= {}
@@ -40,7 +48,31 @@ class NessusClient
     connection.request(options)
   end
 
-  def download_report
+  # Export and download a scan result
+  #
+  # @return String
+  #   The filepath of the file that was downloaded.
+  def export_download_scan(scan_id, params = {}, download_directory = '')
+    params = {
+      'format' => 'pdf',
+      'chapters' => ['vuln_hosts_summary'],
+    }.merge(params)
+    fail 'Invalid format' unless ['csv', 'db', 'html', 'pdf'].include?(params['format'])
+    data = post("/scans/#{scan_id}/export", params)
+    file_id = data['file']
+    fail "Invalid response to export" unless file_id
+    self.retry do
+      data = get("/scans/#{scan_id}/export/#{file_id}/status")
+      data['status'] == 'ready'
+    end
+    # Use request() since we the response is a file, not JSON
+    response = request('GET', "/scans/#{scan_id}/export/#{file_id}/download")
+    match = response.headers['content-disposition'].match(/attachment; filename="([^"]+)"/)
+    fail 'Invalid download response' unless match
+    target_filename = File.join(download_directory, match[1])
+    bytes = File.write(target_filename, response.data)
+    fail "File has wrong number of bytes #{target_filename}" unless bytes.to_i == response.headers['content-length'].to_i
+    target_filename
   end
 
   # Exception thrown when a retry times out

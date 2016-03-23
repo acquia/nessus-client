@@ -16,22 +16,6 @@ class NessusBase < Thor
     true
   end
 
-  no_commands do
-
-    # Common workflow Thor options
-    def self.common_options
-      method_option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
-    end
-
-    def self.common_list_options
-      method_option :columns, :aliases => '-c', :type => :array, :default => ['id', 'name'], :desc => 'List of columns to display in a table'
-    end
-  end
-
-end
-
-class Nessus < NessusBase
-
   CREDS_FILE = ".nessus.yml"
 
   @@creds = nil
@@ -48,6 +32,10 @@ class Nessus < NessusBase
         end
       end
       @@creds
+    end
+
+    def self.client(home)
+      NessusClient.new(creds(home)['url'], creds(home)['accessKey'], creds(home)['secretKey'])
     end
 
     # Display a table to the user. The provided block should an Array of
@@ -79,7 +67,21 @@ class Nessus < NessusBase
           padding_right: 2
         })
     end
+
+    # Common workflow Thor options
+    def self.common_options
+      method_option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
+    end
+
+    def self.common_list_options
+      method_option :columns, :aliases => '-c', :type => :array, :default => ['id', 'name'], :desc => 'List of columns to display in a table'
+    end
+
   end
+
+end
+
+class Nessus < NessusBase
 
   desc "get-api-key NESSUS_URL", "Use username and password (interactive prompt) to generate an API key for Nessus and save to #{CREDS_FILE}"
   method_option :yes, :aliases => '-y', :type => :boolean, :desc => 'Skip prompts for confirmation'
@@ -106,14 +108,14 @@ class Nessus < NessusBase
      session.destroy
   end
 
-  class Scans < NessusBase
-    desc "scans list", "List scans since a given date"
+  class Scan < NessusBase
+    desc "scan list", "List scans since a given date"
     method_option :folder_id, :type => :numeric, :desc => 'Folder ID'
     method_option :since, :desc => 'Last modification date. Show only scans changed since then. Default 7 days.'
     self.common_list_options
     self.common_options
     def list
-      creds = Nessus.creds(options[:home])
+      client = self.client(options[:home])
       params = {}
       if options[:since]
          since = DateTime.parse(options[:since]).to_time.to_i
@@ -125,7 +127,6 @@ class Nessus < NessusBase
       if options[:folder_id]
         params = options[:folder_id]
       end
-      client = NessusClient.new(creds['url'], creds['accessKey'], creds['secretKey'])
       result = client.get('/scans', params)
       Nessus.table_for(result['scans'], options['columns'], "Scans since #{Time.at(since).to_s}") do |scan|
         options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
@@ -135,10 +136,18 @@ class Nessus < NessusBase
         say("Available columns:\n" + columns.join(', '))
       end
     end
+
+    desc "scan download SCAN_ID", 'Download the most recent results for a scan identified by a numeric ID'.
+    self.common_options
+    def download(scan_id)
+      client = self.client(options[:home])
+      filename = client.export_download_scan(scan_id, {}, options[:home])
+      say("Scan downloaded to #{filename}")
+    end
   end
 
-  desc "scans", "Scan related commands"
-  subcommand 'scans', Nessus::Scans
+  desc "scan", "Scan related commands"
+  subcommand 'scan', Nessus::Scans
 
 end
 
