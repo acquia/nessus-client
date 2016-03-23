@@ -61,7 +61,7 @@ class NessusClient
     data = post("/scans/#{scan_id}/export", params)
     file_id = data['file']
     fail "Invalid response to export" unless file_id
-    self.retry do
+    NessusClient.retry do
       data = get("/scans/#{scan_id}/export/#{file_id}/status")
       data['status'] == 'ready'
     end
@@ -70,8 +70,9 @@ class NessusClient
     match = response.headers['content-disposition'].match(/attachment; filename="([^"]+)"/)
     fail 'Invalid download response' unless match
     target_filename = File.join(download_directory, match[1])
-    bytes = File.write(target_filename, response.data)
-    fail "File has wrong number of bytes #{target_filename}" unless bytes.to_i == response.headers['content-length'].to_i
+    bytes = File.write(target_filename, response.body)
+    content_length = response.headers['content-length'].to_i
+    fail "File has wrong number of bytes #{bytes} vs #{content_length} in #{target_filename}" unless bytes == content_length
     target_filename
   end
 
