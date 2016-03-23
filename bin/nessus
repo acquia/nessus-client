@@ -25,8 +25,9 @@ class NessusBase < Thor
     def self.creds(home)
       unless @@creds
         creds_file = File.join(home, CREDS_FILE)
-        file ("Missing file #{creds_file}") unless File.exist?(creds_file)
+        fail("Missing file #{creds_file}") unless File.exist?(creds_file)
         @@creds = YAML.load(File.read(creds_file))
+        @@creds ||= {}
         ['url', 'secretKey', 'accessKey'].each do |key|
           fail("Missing #{key} value in #{creds_file}") unless @@creds[key]
         end
@@ -115,7 +116,7 @@ class Nessus < NessusBase
     self.common_list_options
     self.common_options
     def list
-      client = self.client(options[:home])
+      client = self.class.client(options[:home])
       params = {}
       if options[:since]
          since = DateTime.parse(options[:since]).to_time.to_i
@@ -140,7 +141,7 @@ class Nessus < NessusBase
     desc "scan download SCAN_ID", 'Download the most recent results for a scan identified by a numeric ID'
     self.common_options
     def download(scan_id)
-      client = self.client(options[:home])
+      client = self.class.client(options[:home])
       filename = client.export_download_scan(scan_id, {}, options[:home])
       say("Scan downloaded to #{filename}")
     end
