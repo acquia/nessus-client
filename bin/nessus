@@ -1,9 +1,14 @@
 #!/usr/bin/env ruby
 
+require 'thor'
 require 'nessus-client'
 require 'yaml'
+require 'uri'
+require 'date'
+require 'terminal-table'
 
-class Nessus < Thor
+
+class NessusBase < Thor
 
   # Thor thinks its a good idea to not exit(1) when something bad
   # happens, like bad command line arguments.  We disagree.
@@ -11,7 +16,140 @@ class Nessus < Thor
     true
   end
 
+  CREDS_FILE = ".nessus.yml"
+
   @@creds = nil
+
+  no_commands do
+
+    def self.creds(home)
+      unless @@creds
+        creds_file = File.join(home, CREDS_FILE)
+        fail("Missing file #{creds_file}") unless File.exist?(creds_file)
+        @@creds = YAML.load(File.read(creds_file))
+        @@creds ||= {}
+        ['url', 'secretKey', 'accessKey'].each do |key|
+          fail("Missing #{key} value in #{creds_file}") unless @@creds[key]
+        end
+      end
+      @@creds
+    end
+
+    def self.client(home)
+      NessusClient.new(creds(home)['url'], creds(home)['accessKey'], creds(home)['secretKey'])
+    end
+
+    # Display a table to the user. The provided block should an Array of
+    # row values.
+    #
+    # @param enum [Enumerator]
+    # @param cols [Array]
+    #   List of column headers.
+    # @param title [String]
+    #   Optional table title.
+    # @yield elem [Object]
+    #   The current object in the enumeration.
+    # @return nil
+    def self.table_for(enum, cols, title = nil)
+      rows = []
+      enum.each do |elem|
+        rows << yield(elem)
+      end
+
+      puts Terminal::Table.new(
+        title: title,
+        headings: cols,
+        rows: rows,
+        style: {
+          border_x: '-',
+          border_y: '',
+          border_i: '',
+          padding_left: 0,
+          padding_right: 2
+        })
+    end
+
+    # Common workflow Thor options
+    def self.common_options
+      method_option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
+    end
+
+    def self.common_list_options
+      method_option :columns, :aliases => '-c', :type => :array, :default => ['id', 'name'], :desc => 'List of columns to display in a table'
+    end
+
+  end
+
+end
+
+class Nessus < NessusBase
+
+  desc "get-api-key NESSUS_URL", "Use username and password (interactive prompt) to generate an API key for Nessus and save to #{CREDS_FILE}"
+  method_option :yes, :aliases => '-y', :type => :boolean, :desc => 'Skip prompts for confirmation'
+  self.common_options
+  def get_api_key(nessus_url)
+     uri = URI(nessus_url)
+     fail("You nees to use a https:// URL for Nessus") unless uri.scheme == 'https'
+     creds_file = File.join(options[:home], CREDS_FILE)
+     if File.exist?(creds_file) && !options[:yes]
+       confirm = ask("Overwrite existing file #{creds_file} ?", :yellow, limited_to: %w(yes no), default: 'yes')
+       if confirm != 'yes'
+         say("Aborting command", :red)
+         exit
+       end
+     end
+     username = ask("username:")
+     password = ask("password:", :echo => false)
+     say('********')
+     session = NessusClient::Session.create(nessus_url, username, password)
+     keys = session.keys
+     keys = {'url' => nessus_url}.merge(keys)
+     File.write(creds_file, keys.to_yaml)
+     say("New API keys written to #{creds_file}")
+     session.destroy
+  end
+
+  class Scan < NessusBase
+    desc "scan list", "List scans since a given date"
+    method_option :folder_id, :type => :numeric, :desc => 'Folder ID'
+    method_option :since, :desc => 'Last modification date. Show only scans changed since then. Default 7 days.'
+    self.common_list_options
+    self.common_options
+    def list
+      client = self.class.client(options[:home])
+      params = {}
+      if options[:since]
+         since = DateTime.parse(options[:since]).to_time.to_i
+      else
+        # Default to 7 days ago.
+        since = Time.now.to_i - (7 * 24 * 3600)
+      end
+      params['last_modification_date'] = since
+      if options[:folder_id]
+        params = options[:folder_id]
+      end
+      result = client.get('/scans', params)
+      Nessus.table_for(result['scans'], options['columns'], "Scans since #{Time.at(since).to_s}") do |scan|
+        options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
+      end
+      if result['scans'].length > 0
+        columns = result['scans'].first.keys
+        say("Available columns:\n" + columns.join(', '))
+      end
+    end
+
+    desc "scan download SCAN_ID", 'Download the most recent results for a scan identified by a numeric ID'
+    self.common_options
+    def download(scan_id)
+      client = self.class.client(options[:home])
+      filename = client.export_download_scan(scan_id, {}, options[:home])
+      say("Scan downloaded to #{filename}")
+    end
+  end
+
+  desc "scan", "Scan related commands"
+  subcommand 'scan', Nessus::Scan
+
 end
 
 begin

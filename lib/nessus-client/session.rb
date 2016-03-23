@@ -18,6 +18,8 @@ class NessusClient
       response = request('POST', url, '/session', payload)
       if response['token']
          return self.new(url, response['token'])
+      else
+        raise "Response did not include a session token."
       end
     end
 
@@ -27,8 +29,16 @@ class NessusClient
       }.merge(headers)
       connection = Excon.new(url)
       body = payload ? payload.to_json : ''
-      response = connection.request(method: method, path: path, body: body, headers: headers, idempotent: true, expects: [200, 201])
-      JSON.decode(response.body) 
+      options = {
+        method: method,
+        path: path,
+        body: body,
+        headers: headers,
+        idempotent: true,
+        expects: [200, 201],
+      }
+      response = connection.request(options)
+      JSON.parse(response.body) if response.body.length > 0
     end
 
     def initialize(url, token)
@@ -37,15 +47,14 @@ class NessusClient
     end
 
     def keys
-       headers = {'X-Cookie' => 'token=' + @token}
-       response = self.class.request('PUT', @url, '/session/keys', nil, headers)
-       {'url' => @url}.merge(response)
+      headers = { 'X-Cookie' => 'token=' + @token }
+      self.class.request('PUT', @url, '/session/keys', nil, headers)
     end
 
     def destroy
-       headers = {'X-Cookie' => 'token=' + @token}
-       response = self.class.request('DELETE', @url, '/session', nil, headers)
-       @token = nil
+      headers = { 'X-Cookie' => 'token=' + @token }
+      response = self.class.request('DELETE', @url, '/session', nil, headers)
+      @token = nil
     end
   end
 end
