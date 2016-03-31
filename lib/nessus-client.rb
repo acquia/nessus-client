@@ -4,28 +4,40 @@ require 'json'
 class NessusClient
 
   autoload :Session, "nessus-client/session"
+  autoload :Creds, "nessus-client/creds"
 
-  attr_reader :url
+  # @param [NessusClient::Creds] creds
+  def initialize(creds)
+    @creds = creds
+  end
 
-  # @param [String] nessus_url
-  def initialize(nessus_url, access_key, secret_key)
-    @url = nessus_url
-    @access_key = access_key
-    @secret_key = secret_key
+  def url
+    @creds.url
   end
 
   # Make a GET request expecting a JSON response.
   def get(path, query = {}, options = {})
-   options[:query] = query.to_h if query.length > 0
-   options[:idempotent] = true
-   json_request('GET', path, options)
+    # Handle nil or empty Array
+    options[:query] = query.to_h if query
+    options[:idempotent] = true
+    json_request('GET', path, options)
   end
 
   # Make a POST request expecting a JSON response.
-  def post(path, body, query = {}, options = {})
-   options[:query] = query.to_h if query.length > 0
-   options[:body] = body
-   json_request('POST', path, options)
+  def post(path, body, options = {})
+    options[:body] = body
+    json_request('POST', path, options)
+  end
+
+  # Make a PUT request expecting a JSON response.
+  def put(path, body, options = {})
+    options[:body] = body
+    json_request('PUT', path, options)
+  end
+
+  def delete(path, options = {})
+    options[:idempotent] = true
+    json_request('DELETE', path, options)
   end
 
   def json_request(method, path, options = {})
@@ -39,26 +51,34 @@ class NessusClient
   end
 
   def request(method, path, options = {})
-    connection = Excon.new(url)
+    connection = Excon.new(@creds.url)
     options[:expects] ||= [200]
     options[:method] = method
     options[:path] = path
     options[:headers] ||= {}
-    options[:headers]['X-ApiKeys'] = "accessKey=#{@access_key}; secretKey=#{@secret_key}"
+    options[:headers]['X-ApiKeys'] = "accessKey=#{@creds.access_key}; secretKey=#{@creds.secret_key}"
     connection.request(options)
   end
 
   # Export and download a scan result
   #
+  # @scan_id
+  # @body
+  #   A hash to be used for the initial request payload.
   # @return String
   #   The filepath of the file that was downloaded.
-  def export_download_scan(scan_id, params = {}, download_directory = '')
-    params = {
+  def export_download_scan(scan_id, body = {}, download_directory = '', history_id = nil)
+    body = {
       'format' => 'pdf',
       'chapters' => ['vuln_hosts_summary'],
-    }.merge(params)
-    fail 'Invalid format' unless ['csv', 'db', 'html', 'pdf'].include?(params['format'])
-    data = post("/scans/#{scan_id}/export", params)
+    }.merge(body)
+    fail("Invalid format #{body['format']}") unless ['csv', 'db', 'html', 'pdf'].include?(body['format'])
+    diff = body['chapters'] - %w(vuln_hosts_summary vuln_by_host compliance_exec remediations vuln_by_plugin compliance)
+    fail("Invalid chapter list #{body['chapters'].inspect}") if diff.length > 0
+    body['chapters'] = body['chapters'].join(';')
+    options = {}
+    options[:query] = {'history_id' => history_id} if history_id
+    data = post("/scans/#{scan_id}/export", body, options)
     file_id = data['file']
     fail "Invalid response to export" unless file_id
     NessusClient.retry do
