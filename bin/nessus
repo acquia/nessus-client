@@ -3,7 +3,7 @@
 require 'nessus-client/cli'
 
 begin
-  NessusCLI.start
+  NessusCLI::Nessus.start
 rescue => e
   puts "ERROR - " + e.message
   puts e.backtrace.first
