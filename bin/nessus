@@ -112,6 +112,8 @@ class Nessus < NessusBase
         params = options[:folder_id]
       end
       result = client.get('/scans', params)
+      # Protect against empty results.
+      result['scans'] ||= []
       Nessus.table_for(result['scans'], options['columns'], "Scans since #{Time.at(since).to_s}") do |scan|
         options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
       end
