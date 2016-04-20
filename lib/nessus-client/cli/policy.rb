@@ -18,15 +18,14 @@ module NessusCLI
           say("Available columns:\n" + columns.join(', '))
         end
       end
-    end
 
-    desc "policy copy POLICY_ID", "Copy a policy (you will own the new one)"
-    self.common_options
-    def copy(policy_id)
-      client = self.class.client(options[:home])
-      result = client.post("/policies/#{policy_id}/copy")
-      say("New policy:\n#{JSON.pretty_format(result)}")
+      desc "policy copy POLICY_ID", "Copy a policy (you will own the new one)"
+      self.common_options
+      def copy(policy_id)
+        client = self.class.client(options[:home])
+        result = client.post("/policies/#{policy_id}/copy")
+        say("New policy:\n#{JSON.pretty_format(result)}")
+      end
     end
-
   end
 end
