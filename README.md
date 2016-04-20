@@ -17,7 +17,7 @@ ruby version (e.g. 2.1.x or 2.2.x). Run the following to start.
 
 The API key to call nessus is stored in a YAML file named *.nessus.yml*.
 This will be loaded by default from from you home directory, but you
-can have the commands look in another location by using the ```--home``
+can have the commands look in another location by using the ```--home```
 option.
 
 The format of the file is as follows:

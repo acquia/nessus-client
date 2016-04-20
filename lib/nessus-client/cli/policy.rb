@@ -2,7 +2,7 @@ module NessusCLI
   module Commands
     class Policy < NessusCLI::Base
   
-      desc "policy list", "List scans since a given date"
+      desc "policy list", "List all policies you can access"
       method_option :columns, :aliases => '-c', :type => :array, :default => %w(id name owner visibility), :desc => 'List of columns to display in a table'
       self.common_options
       def list
@@ -19,5 +19,14 @@ module NessusCLI
         end
       end
     end
+
+    desc "policy copy POLICY_ID", "Copy a policy (you will own the new one)"
+    self.common_options
+    def copy(policy_id)
+      client = self.class.client(options[:home])
+      result = client.post("/policies/#{policy_id}/copy")
+      say("New policy:\n#{JSON.pretty_format(result)}")
+    end
+
   end
 end
