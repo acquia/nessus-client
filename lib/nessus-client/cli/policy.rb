@@ -23,8 +23,8 @@ module NessusCLI
       self.common_options
       def copy(policy_id)
         client = self.class.client(options[:home])
-        result = client.post("/policies/#{policy_id}/copy")
-        say("New policy:\n#{JSON.pretty_format(result)}")
+        result = client.post("/policies/#{policy_id}/copy", '')
+        say("New policy:\n#{JSON.pretty_generate(result)}")
       end
     end
   end
