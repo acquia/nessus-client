@@ -25,6 +25,16 @@ module NessusCLI
         client = self.class.client(options[:home])
         result = client.post("/policies/#{policy_id}/copy", '')
         say("New policy:\n#{JSON.pretty_generate(result)}")
+        # Also set the new policy to be usable by everyone by default.
+        # 0 = 'no access'
+        # 16 = 'can use'
+        # 32 = 'can edit'
+        body = client.get("/permissions/policy/#{result['id']}")
+        body['acls'].each do |perm|
+          perm["permissions"] = 16 if perm["type"] == "default"
+        end
+        client.put("/permissions/policy/#{result['id']}", body)
+        say('Set the default permissions so everyone can use this policy')
       end
     end
   end
