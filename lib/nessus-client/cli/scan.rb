@@ -31,7 +31,7 @@ module NessusCLI
           say("Available columns:\n" + columns.join(', '))
         end
       end
-  
+
       desc "scan update-targets SCAN_ID", "Update the targets for a scan."
       method_option :target_file, :desc => 'File containing a list of target fully-qualified hostnames (one per line).'
       method_option :target_list, :type => :array, :desc => 'List of space separated fully-qualified hostnames'
@@ -51,7 +51,7 @@ module NessusCLI
         result = client.put("/scans/#{scan_id}", body)
         say("Updated '#{result['name']}' with #{result['custom_targets'].split(',').count} targets.")
       end
-  
+
       desc "scan launch SCAN_ID", "Launch a scan."
       method_option :target_file, :desc => 'File containing a list of target fully-qualified hostnames (one per line).'
       method_option :target_list, :type => :array, :desc => 'List of space separated fully-qualified hostnames'
@@ -69,7 +69,7 @@ module NessusCLI
          fail('Invalid response') unless data['scan_uuid']
          say("Scan #{scan_id} launched with UUID #{data['scan_uuid']}")
       end
-  
+
       desc "scan download SCAN_ID", 'Download the most recent results for a scan identified by a numeric ID'
       method_option :chapters, :type => :array, :default => ['vuln_hosts_summary'], :desc => 'Sections to include in the report. Valid sections: vuln_hosts_summary, vuln_by_host, compliance_exec, remediations, vuln_by_plugin, compliance'
       method_option :format, :default => 'pdf', :desc => 'Available formats: pdf, nessus, html, csv, db'
@@ -84,14 +84,24 @@ module NessusCLI
         filename = client.export_download_scan(scan_id, body, options[:home], options[:history_id])
         say("Scan downloaded to #{filename}")
       end
-  
+
+      desc "scan info SCAN_ID", 'More detailed information for a scan identified by a numeric ID'
+      self.common_options
+      def info(scan_id)
+        client = self.class.client(options[:home])
+        details = client.get("/scans/#{scan_id}")
+        self.class.table_for(details['info'], ['Name', 'Value'], "Scan info for '#{details['info']['name']}' (#{scan_id})") do |row|
+          [row[0], row[0].match(/(timestamp|_start|_end)$/) ? Time.at(row[1]).to_s : row[1].inspect]
+        end
+      end
+
       desc "scan history SCAN_ID", 'History information for a scan identified by a numeric ID'
       method_option :columns, :aliases => '-c', :type => :array, :default => %w(history_id status last_modification_date), :desc => 'List of columns to display in a table'
       self.common_options
       def history(scan_id)
         client = self.class.client(options[:home])
         details = client.get("/scans/#{scan_id}")
-        self.class.table_for(details['history'], options['columns'], "Scan history for #{details['info']['name']} (#{scan_id})") do |scan|
+        self.class.table_for(details['history'], options['columns'], "Scan history for '#{details['info']['name']}' (#{scan_id})") do |scan|
           options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
         end
         if details['history'].length > 0

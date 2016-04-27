@@ -20,18 +20,23 @@ module NessusCLI
       end
 
       desc "policy copy POLICY_ID", "Copy a policy (you will own the new one)"
+      method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of "none", "use", "edit"'
       self.common_options
       def copy(policy_id)
+        unless ["none", "use", "edit"].include?(options[:default_permission])
+          fail('Invalid default permission.')
+        end
         client = self.class.client(options[:home])
         result = client.post("/policies/#{policy_id}/copy", '')
         say("New policy:\n#{JSON.pretty_generate(result)}")
         # Also set the new policy to be usable by everyone by default.
-        # 0 = 'no access'
-        # 16 = 'can use'
-        # 32 = 'can edit'
+        # 0 = 'No access'
+        # 16 = 'Can use'
+        # 32 = 'Can edit'
+        map = { 'none' => 0, 'use' => 16, 'edit' => 32 }
         body = client.get("/permissions/policy/#{result['id']}")
         body['acls'].each do |perm|
-          perm["permissions"] = 16 if perm["type"] == "default"
+          perm["permissions"] = map[options[:default_permission]] if perm["type"] == "default"
         end
         client.put("/permissions/policy/#{result['id']}", body)
         say('Set the default permissions so everyone can use this policy')
