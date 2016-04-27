@@ -5,6 +5,7 @@ module NessusCLI
       desc "scan list", "List scans since a given date"
       method_option :folder_id, :type => :numeric, :desc => 'Folder ID'
       method_option :since, :desc => 'Last modification date. Show only scans changed since then. Default 7 days.'
+      method_option :all, :type => :boolean, :desc => 'Show all scans regardless of '
       method_option :columns, :aliases => '-c', :type => :array, :default => %w(id name status), :desc => 'List of columns to display in a table'
       self.common_options
       def list
@@ -76,12 +77,18 @@ module NessusCLI
       self.common_options
       def create(policy_id)
          client = self.class.client(options[:home])
+         data = client.get('/policies')
+         policy_id = policy_id.to_i
+         policy = data['policies'].select{|pol| pol['id'] == policy_id }.first
+         fail('Policy not found') unless policy
          body = {
+           "uuid" => policy['template_uuid'],
            'settings' => {
+             "acls" => [{"permissions"=>64, "owner"=>nil, "display_name"=>nil, "name"=>nil, "id"=>nil, "type"=>"default"}],
              "name" => options[:name],
-             "description" => options[:description].to_s,
+             "description" => options[:description] ? options[:description] : "Scan created from policy: #{policy['name']} (#{policy_id})",
              "policy_id" => policy_id.to_i,
-             "text_targets" => '',
+             "text_targets" => ' ', # Need a non-empty string.
            }
          }
 
@@ -111,7 +118,7 @@ module NessusCLI
         client = self.class.client(options[:home])
         details = client.get("/scans/#{scan_id}")
         self.class.table_for(details['info'], ['Name', 'Value'], "Scan info for '#{details['info']['name']}' (#{scan_id})") do |row|
-          [row[0], row[0].match(/(timestamp|_start|_end)$/) ? Time.at(row[1]).to_s : row[1].inspect]
+          [row[0], row[1] && row[0].match(/(timestamp|_start|_end)$/) ? Time.at(row[1]).to_s : row[1].inspect]
         end
       end
 
