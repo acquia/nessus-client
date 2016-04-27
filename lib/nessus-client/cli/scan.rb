@@ -70,6 +70,26 @@ module NessusCLI
          say("Scan #{scan_id} launched with UUID #{data['scan_uuid']}")
       end
 
+      desc "scan create POLICY_ID", "Create a scan from a policy."
+      method_option :name, :required => true, :desc => 'Name for the scan.'
+      method_option :description,  :desc => 'Description of the scan'
+      self.common_options
+      def create(policy_id)
+         client = self.class.client(options[:home])
+         body = {
+           'settings' => {
+             "name" => options[:name],
+             "description" => options[:description].to_s,
+             "policy_id" => policy_id.to_i,
+             "text_targets" => '',
+           }
+         }
+
+         data = client.post("/scans", body)
+         fail('Invalid response') unless data['scan']
+         say("New scan:\n#{JSON.pretty_generate(data['scan'])}")
+      end
+
       desc "scan download SCAN_ID", 'Download the most recent results for a scan identified by a numeric ID'
       method_option :chapters, :type => :array, :default => ['vuln_hosts_summary'], :desc => 'Sections to include in the report. Valid sections: vuln_hosts_summary, vuln_by_host, compliance_exec, remediations, vuln_by_plugin, compliance'
       method_option :format, :default => 'pdf', :desc => 'Available formats: pdf, nessus, html, csv, db'
