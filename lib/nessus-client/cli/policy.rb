@@ -63,7 +63,7 @@ module NessusCLI
         body['acls'].each do |perm|
           perm["permissions"] = map[options[:default_permission]] if perm["type"] == "default"
         end
-        client.put("/permissions/policy/#{result['id']}", body)
+        client.put("/permissions/policy/#{policy_id}", body)
         if options[:default_permission] == 'none'
           say("Set the default permissions so only you can access this policy")
         else
