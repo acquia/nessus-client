@@ -84,6 +84,7 @@ module NessusCLI
          body = {
            "uuid" => policy['template_uuid'],
            'settings' => {
+             # Set default permission 64 = 'Can Configure'
              "acls" => [{"permissions"=>64, "owner"=>nil, "display_name"=>nil, "name"=>nil, "id"=>nil, "type"=>"default"}],
              "name" => options[:name],
              "description" => options[:description] ? options[:description] : "Scan created from policy: #{policy['name']} (#{policy_id})",
