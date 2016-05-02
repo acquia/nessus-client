@@ -2,7 +2,7 @@ module NessusCLI
   module Commands
     class Policy < NessusCLI::Base
 
-      desc "policy list", "List all policies you can access"
+      desc "list", "List all policies you can access"
       method_option :columns, :aliases => '-c', :type => :array, :default => %w(id name owner visibility), :desc => 'List of columns to display in a table'
       self.common_options
       def list
@@ -19,7 +19,7 @@ module NessusCLI
         end
       end
 
-      desc "policy copy POLICY_ID", "Copy a policy (you will own the new one)"
+      desc "copy POLICY_ID", "Copy a policy (you will own the new one)"
       method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of "none", "use", "edit"'
       self.common_options
       def copy(policy_id)
@@ -46,7 +46,7 @@ module NessusCLI
         end
       end
 
-      desc "policy set-default-permission POLICY_ID", "Copy a policy (you will own the new one)"
+      desc "set-default-permission POLICY_ID", "Copy a policy (you will own the new one)"
       method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of "none", "use", "edit"'
       self.common_options
       def set_default_permission(policy_id)
