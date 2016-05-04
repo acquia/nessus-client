@@ -21,6 +21,18 @@ module NessusCLI
         NessusClient.new(creds)
       end
   
+      # @param [String] type
+      #   e.g. scan or policy
+      # @param [String] name
+      #   Name of the permission, e.g. "none" or "edit"
+      def permission_message(type, name)
+        if name == 'none'
+          say("Set the default permissions so only you can access this #{type}")
+        else
+          say("Set the default permissions so everyone can #{name} this #{type}")
+        end
+      end
+
       # Display a table to the user. The provided block should an Array of
       # row values.
       #
@@ -87,7 +99,9 @@ module NessusCLI
        session = NessusClient::Session.create(nessus_url, username, password)
        keys = session.keys
        keys = {'url' => nessus_url}.merge(keys)
-       File.write(creds_file, keys.to_yaml)
+       # Append username as comment
+       creds_yaml = keys.to_yaml + "\n# API keys for #{username}\n"
+       File.write(creds_file, creds_yaml)
        say("New API keys written to #{creds_file}")
        session.destroy
     end

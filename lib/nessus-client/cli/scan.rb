@@ -2,6 +2,21 @@ module NessusCLI
   module Commands
 
     class Scan < NessusCLI::Base
+
+      # @return [Hash]
+      def self.scan_permissions
+        { 'none' => 0, 'view' => 16, 'control' => 32, 'configure' => 64 }
+      end
+
+      # @param [String] name
+      #
+      # @return [Int] numeric permission
+      def self.map_scan_permission(name)
+        map = scan_permissions
+        fail("Invalid permission '#{naem}'.") unless map[name]
+        map[name]
+      end
+
       desc "list", "List scans since a given date"
       method_option :folder_id, :type => :numeric, :desc => 'Folder ID'
       method_option :since, :desc => 'Last modification date. Show only scans changed since then. Default 7 days.'
@@ -34,8 +49,8 @@ module NessusCLI
       end
 
       desc "update-targets SCAN_ID", "Update the targets for a scan."
-      method_option :target_file, :desc => 'File containing a list of target fully-qualified hostnames (one per line).'
-      method_option :target_list, :type => :array, :desc => 'List of space separated fully-qualified hostnames'
+      method_option :target_file, :aliases => ['-f', '--file'], :desc => 'File containing a list of target fully-qualified hostnames (one per line).'
+      method_option :target_list, :aliases => ['-l', '--list'], :type => :array, :desc => 'List of space separated fully-qualified hostnames'
       self.common_options
       def update_targets(scan_id)
         fail('Please supply --target-file or --target-list') unless options[:target_file] || options[:target_list]
@@ -53,9 +68,9 @@ module NessusCLI
         say("Updated '#{result['name']}' with #{result['custom_targets'].split(',').count} targets.")
       end
 
-      desc "launch SCAN_ID", "Launch a scan."
-      method_option :target_file, :desc => 'File containing a list of target fully-qualified hostnames (one per line).'
-      method_option :target_list, :type => :array, :desc => 'List of space separated fully-qualified hostnames'
+      desc "launch SCAN_ID", "Launch a scan. You should normally specify targets with a list or file."
+      method_option :target_file, :aliases => ['-f', '--file'], :desc => 'File containing a list of target fully-qualified hostnames (one per line).'
+      method_option :target_list, :aliases => ['-l', '--list'], :type => :array, :desc => 'List of space separated fully-qualified hostnames'
       self.common_options
       def launch(scan_id)
          client = self.class.client(options[:home])
@@ -74,8 +89,10 @@ module NessusCLI
       desc "create POLICY_ID", "Create a scan from a policy."
       method_option :name, :required => true, :desc => 'Name for the scan.'
       method_option :description,  :desc => 'Description of the scan'
+      method_option :default_permission, :banner => 'PERM', :default => 'control', :desc => 'Default permission for other users. One of ' + self.scan_permissions.keys.inspect
       self.common_options
       def create(policy_id)
+         int_default_perm = self.class.map_scan_permission(options[:default_permission])
          client = self.class.client(options[:home])
          data = client.get('/policies')
          policy_id = policy_id.to_i
@@ -84,8 +101,8 @@ module NessusCLI
          body = {
            "uuid" => policy['template_uuid'],
            'settings' => {
-             # Set default permission 64 = 'Can Configure'
-             "acls" => [{ "permissions" => 64, "owner" => nil, "display_name" => nil, "name" => nil, "id" => nil, "type" => "default" }],
+             # Set default permission 32 = 'Can control'
+             "acls" => [{ "permissions" => int_default_perm, "owner" => nil, "display_name" => nil, "name" => nil, "id" => nil, "type" => "default" }],
              "name" => options[:name],
              "description" => options[:description] ? options[:description] : "Scan created from policy: #{policy['name']} (#{policy_id})",
              "policy_id" => policy_id.to_i,
@@ -122,6 +139,27 @@ module NessusCLI
         self.class.table_for(details['info'], ['Name', 'Value'], "Scan info for '#{details['info']['name']}' (#{scan_id})") do |row|
           [row[0], row[1] && row[0].match(/(timestamp|_start|_end)$/) ? Time.at(row[1]).to_s : row[1].inspect]
         end
+      end
+
+      desc "set-default-permission SCAN_ID", "Set default permissions for a scan"
+      method_option :default_permission, :banner => 'PERM', :default => 'control', :desc => 'Default permission for other users. One of ' + self.scan_permissions.keys.inspect
+      self.common_options
+      def set_default_permission(scan_id)
+        int_default_perm = self.class.map_scan_permission(options[:default_permission])
+        client = self.class.client(options[:home])
+        # Get current details to preserve targets, etc.
+        info = client.get("/scans/#{scan_id}")['info']
+        body = {
+          'settings' => {
+            'acls' => info['acls'],
+            "text_targets" => info["targets"] || ' ',
+          },
+        }
+        body['settings']['acls'].each do |perm|
+          perm["permissions"] = int_default_perm if perm["type"] == "default"
+        end
+        client.put("/scans/#{scan_id}", body)
+        permission_message('scan', options[:default_permission])
       end
 
       desc "history SCAN_ID", 'History information for a scan identified by a numeric ID'

@@ -2,6 +2,20 @@ module NessusCLI
   module Commands
     class Policy < NessusCLI::Base
 
+      # @return [Hash]
+      def self.policy_permissions
+        { 'none' => 0, 'use' => 16, 'edit' => 32 }
+      end
+
+      # @param [String] name
+      #
+      # @return [Int] numeric permission
+      def self.map_policy_permission(name)
+        map = policy_permissions
+        fail("Invalid permission '#{name}'.") unless map[name]
+        map[name]
+      end
+
       desc "list", "List all policies you can access"
       method_option :columns, :aliases => '-c', :type => :array, :default => %w(id name owner visibility), :desc => 'List of columns to display in a table'
       self.common_options
@@ -20,55 +34,34 @@ module NessusCLI
       end
 
       desc "copy POLICY_ID", "Copy a policy (you will own the new one)"
-      method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of "none", "use", "edit"'
+      method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of ' + self.policy_permissions.keys.inspect
       self.common_options
       def copy(policy_id)
-        unless ["none", "use", "edit"].include?(options[:default_permission])
-          fail('Invalid default permission.')
-        end
+        int_default_perm = self.map_policy_permission(options[:default_permission])
         client = self.class.client(options[:home])
         result = client.post("/policies/#{policy_id}/copy", '')
         say("New policy:\n#{JSON.pretty_generate(result)}")
         # Also set the new policy to be usable by everyone by default.
-        # 0 = 'No access'
-        # 16 = 'Can use'
-        # 32 = 'Can edit'
-        map = { 'none' => 0, 'use' => 16, 'edit' => 32 }
         body = client.get("/permissions/policy/#{result['id']}")
         body['acls'].each do |perm|
-          perm["permissions"] = map[options[:default_permission]] if perm["type"] == "default"
+          perm["permissions"] = int_default_perm if perm["type"] == "default"
         end
         client.put("/permissions/policy/#{result['id']}", body)
-        if options[:default_permission] == 'none'
-          say("Set the default permissions so only you can access this policy")
-        else
-          say("Set the default permissions so everyone can #{options[:default_permission]} this policy")
-        end
+        permission_message('policy', options[:default_permission])
       end
 
-      desc "set-default-permission POLICY_ID", "Copy a policy (you will own the new one)"
-      method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of "none", "use", "edit"'
+      desc "set-default-permission POLICY_ID", "Set default permissions for a policy"
+      method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of ' + self.policy_permissions.keys.inspect
       self.common_options
       def set_default_permission(policy_id)
-        unless ["none", "use", "edit"].include?(options[:default_permission])
-          fail('Invalid default permission.')
-        end
+        int_default_perm = self.map_policy_permission(options[:default_permission])
         client = self.class.client(options[:home])
-        # Also set the new policy to be usable by everyone by default.
-        # 0 = 'No access'
-        # 16 = 'Can use'
-        # 32 = 'Can edit'
-        map = { 'none' => 0, 'use' => 16, 'edit' => 32 }
         body = client.get("/permissions/policy/#{policy_id}")
         body['acls'].each do |perm|
-          perm["permissions"] = map[options[:default_permission]] if perm["type"] == "default"
+          perm["permissions"] = int_default_perm if perm["type"] == "default"
         end
         client.put("/permissions/policy/#{policy_id}", body)
-        if options[:default_permission] == 'none'
-          say("Set the default permissions so only you can access this policy")
-        else
-          say("Set the default permissions so everyone can #{options[:default_permission]} this policy")
-        end
+        permission_message('policy', options[:default_permission])
       end
     end
   end
