@@ -37,7 +37,7 @@ module NessusCLI
       method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of ' + self.policy_permissions.keys.inspect
       self.common_options
       def copy(policy_id)
-        int_default_perm = self.map_policy_permission(options[:default_permission])
+        int_default_perm = self.class.map_policy_permission(options[:default_permission])
         client = self.class.client(options[:home])
         result = client.post("/policies/#{policy_id}/copy", '')
         say("New policy:\n#{JSON.pretty_generate(result)}")
@@ -54,7 +54,7 @@ module NessusCLI
       method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of ' + self.policy_permissions.keys.inspect
       self.common_options
       def set_default_permission(policy_id)
-        int_default_perm = self.map_policy_permission(options[:default_permission])
+        int_default_perm = self.class.map_policy_permission(options[:default_permission])
         client = self.class.client(options[:home])
         body = client.get("/permissions/policy/#{policy_id}")
         body['acls'].each do |perm|
