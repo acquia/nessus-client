@@ -131,10 +131,10 @@ class NessusClient
       sleep(d) if times > 0
       times += 1
       result = blk.call(times)
-      if (!result) &&(Time.now.to_f - start_time) >= opts[:timeout]
+      if (!result) && (Time.now.to_i > stop_time)
         raise TimeoutException.new("Timeout after #{opts[:timeout]} sec.")
       end
-      io.puts "+ retry: #{stop_time-Time.now.to_i} secs left"
+      io.puts "+ retry: #{stop_time - Time.now.to_i} secs left"
     end while (!result)
     result
   end
