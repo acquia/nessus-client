@@ -22,15 +22,7 @@ module NessusCLI
       def list
         client = self.class.client(options[:home])
         result = client.get('/policies')
-        # Protect against empty results.
-        result['policies'] ||= []
-        self.class.table_for(result['policies'], options['columns'], "Policies") do |scan|
-          options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
-        end
-        if result['policies'].length > 0
-          columns = result['policies'].first.keys
-          say("Available columns:\n" + columns.join(', '))
-        end
+        print_result_table(result['policies'], options[:columns], 'Policies')
       end
 
       desc "copy POLICY_ID", "Copy a policy (you will own the new one)"

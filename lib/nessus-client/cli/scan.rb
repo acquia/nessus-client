@@ -37,15 +37,7 @@ module NessusCLI
           params = options[:folder_id]
         end
         result = client.get('/scans', params)
-        # Protect against empty results.
-        result['scans'] ||= []
-        self.class.table_for(result['scans'], options['columns'], "Scans since #{Time.at(since).to_s}") do |scan|
-          options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
-        end
-        if result['scans'].length > 0
-          columns = result['scans'].first.keys
-          say("Available columns:\n" + columns.join(', '))
-        end
+        print_result_table(result['scans'], options[:columns], "Scans since #{Time.at(since).to_s}")
       end
 
       desc "update-targets SCAN_ID", "Update the targets for a scan."
