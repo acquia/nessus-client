@@ -89,6 +89,7 @@ module NessusCLI
     autoload :Scan, 'nessus-client/cli/scan'
     autoload :Policy, 'nessus-client/cli/policy'
     autoload :User, 'nessus-client/cli/user'
+    autoload :Plugin, 'nessus-client/cli/plugin'
   end
 
   class Nessus < Base
@@ -127,5 +128,8 @@ module NessusCLI
 
     desc "user SUBCOMMAND ...ARGS", "User related commands"
     subcommand 'user', NessusCLI::Commands::User
+
+    desc "plugin SUBCOMMAND ...ARGS", "Plugin related commands"
+    subcommand 'plugin', NessusCLI::Commands::Plugin
   end
 end
