@@ -118,6 +118,7 @@ module NessusCLI
       desc "download SCAN_ID", 'Download the most recent results for a scan identified by a numeric ID'
       method_option :chapters, :type => :array, :default => ['vuln_hosts_summary'], :desc => 'Sections to include in the report. Valid sections: vuln_hosts_summary, vuln_by_host, compliance_exec, remediations, vuln_by_plugin, compliance'
       method_option :format, :default => 'pdf', :desc => 'Available formats: pdf, nessus, html, csv, db'
+      method_option :password, :desc => 'Password for db format (required only for that format)'
       method_option :history_id, :aliases => '--hist', :desc => 'History ID if you want to get something other than the most recent scan.'
       method_option :dir, :default => ENV['HOME'], :desc => 'Directory to save the downloaded file.'
       self.common_options
@@ -127,6 +128,9 @@ module NessusCLI
           'format' => options[:format],
           'chapters' => options[:chapters],
         }
+        if options[:password]
+          body['password'] = options[:password]
+        end
         filename = client.export_download_scan(scan_id, body, options[:dir], options[:history_id])
         say("Scan downloaded to #{filename}")
       end

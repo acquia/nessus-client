@@ -73,6 +73,7 @@ class NessusClient
       'chapters' => ['vuln_hosts_summary'],
     }.merge(body)
     fail("Invalid format #{body['format']}") unless ['nessus', 'csv', 'db', 'html', 'pdf'].include?(body['format'])
+    fail("Missing password parameter") if body['format'] == 'db' && !body['password']
     diff = body['chapters'] - %w(vuln_hosts_summary vuln_by_host compliance_exec remediations vuln_by_plugin compliance)
     fail("Invalid chapter list #{body['chapters'].inspect}") if diff.length > 0
     body['chapters'] = body['chapters'].join(';')
