@@ -42,6 +42,33 @@ module NessusCLI
         permission_message('policy', options[:default_permission])
       end
 
+      desc "delete POLICY_ID", "Delete a policy (you must own it)"
+      self.common_options
+      def delete(policy_id)
+        client = self.class.client(options[:home])
+        result = client.delete("/policies/#{policy_id}")
+        say("Policy #{policy_id} deleted")
+      end
+
+      desc "export POLICY_ID", "Export a policy as XML"
+      method_option :dir, :default => ENV['HOME'], :desc => 'Directory to save the downloaded file.'
+      method_option :filename, :desc => 'Provide a custom filename'
+      self.common_options
+      def export(policy_id)
+        client = self.class.client(options[:home])
+        # Use request() since we the response is a file, not JSON
+        response = client.request('GET', "/policies/#{policy_id}/export")
+        match = response.headers['content-disposition'].match(/attachment; filename="([^"]+)"/)
+        puts match.inspect
+        puts response.headers.inspect
+        filename = options[:filename] || "nessus-policy-#{policy_id}.xml"
+        target_filename = File.join(options[:dir], filename)
+        bytes = File.write(target_filename, response.body)
+        content_length = response.headers['content-length'].to_i
+        fail("File has wrong number of bytes #{bytes} vs #{content_length} in #{target_filename}") unless bytes == content_length
+        say("Policy written to #{target_filename}")
+      end
+
       desc "set-default-permission POLICY_ID", "Set default permissions for a policy"
       method_option :default_permission, :banner => 'PERM', :default => 'use', :desc => 'Default permission for other users. One of ' + self.policy_permissions.keys.inspect
       self.common_options
