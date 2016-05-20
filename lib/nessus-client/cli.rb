@@ -80,8 +80,6 @@ module NessusCLI
         method_option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
       end
   
-      def self.common_list_options
-      end
     end
   end
   
@@ -90,6 +88,7 @@ module NessusCLI
     autoload :Policy, 'nessus-client/cli/policy'
     autoload :User, 'nessus-client/cli/user'
     autoload :Plugin, 'nessus-client/cli/plugin'
+    autoload :PluginRule, 'nessus-client/cli/plugin-rule'
   end
 
   class Nessus < Base
@@ -131,5 +130,8 @@ module NessusCLI
 
     desc "plugin SUBCOMMAND ...ARGS", "Plugin related commands"
     subcommand 'plugin', NessusCLI::Commands::Plugin
+
+    desc "plugin-rule SUBCOMMAND ...ARGS", "Plugin related commands"
+    subcommand 'plugin_rule', NessusCLI::Commands::PluginRule
   end
 end
