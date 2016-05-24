@@ -1,6 +1,9 @@
+
+require_relative 'lib/nessus-client/version'
+
 Gem::Specification.new do |s|
   s.name        = 'nessus-client'
-  s.version     = '0.3.0'
+  s.version     = NessusClient::VERSION
   s.license     = 'MIT License'
   s.summary     = 'Tooling for interacting with Nessus 6 API'
   s.description = 'Tooling for provisioning and manag'
