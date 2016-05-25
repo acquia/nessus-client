@@ -22,15 +22,7 @@ module NessusCLI
       def list
         client = self.class.client(options[:home])
         result = client.get('/policies')
-        # Protect against empty results.
-        result['policies'] ||= []
-        self.class.table_for(result['policies'], options['columns'], "Policies") do |scan|
-          options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
-        end
-        if result['policies'].length > 0
-          columns = result['policies'].first.keys
-          say("Available columns:\n" + columns.join(', '))
-        end
+        print_result_table(result['policies'], options[:columns], 'Policies')
       end
 
       desc "copy POLICY_ID", "Copy a policy (you will own the new one)"
@@ -48,6 +40,33 @@ module NessusCLI
         end
         client.put("/permissions/policy/#{result['id']}", body)
         permission_message('policy', options[:default_permission])
+      end
+
+      desc "delete POLICY_ID", "Delete a policy (you must own it)"
+      self.common_options
+      def delete(policy_id)
+        client = self.class.client(options[:home])
+        result = client.delete("/policies/#{policy_id}")
+        say("Policy #{policy_id} deleted")
+      end
+
+      desc "export POLICY_ID", "Export a policy as XML"
+      method_option :dir, :default => ENV['HOME'], :desc => 'Directory to save the downloaded file.'
+      method_option :filename, :desc => 'Provide a custom filename'
+      self.common_options
+      def export(policy_id)
+        client = self.class.client(options[:home])
+        # Use request() since we the response is a file, not JSON
+        response = client.request('GET', "/policies/#{policy_id}/export")
+        match = response.headers['content-disposition'].match(/attachment; filename="([^"]+)"/)
+        puts match.inspect
+        puts response.headers.inspect
+        filename = options[:filename] || "nessus-policy-#{policy_id}.xml"
+        target_filename = File.join(options[:dir], filename)
+        bytes = File.write(target_filename, response.body)
+        content_length = response.headers['content-length'].to_i
+        fail("File has wrong number of bytes #{bytes} vs #{content_length} in #{target_filename}") unless bytes == content_length
+        say("Policy written to #{target_filename}")
       end
 
       desc "set-default-permission POLICY_ID", "Set default permissions for a policy"

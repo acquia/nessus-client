@@ -37,15 +37,7 @@ module NessusCLI
           params = options[:folder_id]
         end
         result = client.get('/scans', params)
-        # Protect against empty results.
-        result['scans'] ||= []
-        self.class.table_for(result['scans'], options['columns'], "Scans since #{Time.at(since).to_s}") do |scan|
-          options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
-        end
-        if result['scans'].length > 0
-          columns = result['scans'].first.keys
-          say("Available columns:\n" + columns.join(', '))
-        end
+        print_result_table(result['scans'], options[:columns], "Scans since #{Time.at(since).to_s}")
       end
 
       desc "update-targets SCAN_ID", "Update the targets for a scan."
@@ -140,7 +132,7 @@ module NessusCLI
       def info(scan_id)
         client = self.class.client(options[:home])
         details = client.get("/scans/#{scan_id}")
-        self.class.table_for(details['info'], ['Name', 'Value'], "Scan info for '#{details['info']['name']}' (#{scan_id})") do |row|
+        table_for(details['info'], ['Name', 'Value'], "Scan info for '#{details['info']['name']}' (#{scan_id})") do |row|
           [row[0], row[1] && row[0].match(/(timestamp|_start|_end)$/) ? Time.at(row[1]).to_s : row[1].inspect]
         end
       end
@@ -172,7 +164,7 @@ module NessusCLI
       def history(scan_id)
         client = self.class.client(options[:home])
         details = client.get("/scans/#{scan_id}")
-        self.class.table_for(details['history'], options['columns'], "Scan history for '#{details['info']['name']}' (#{scan_id})") do |scan|
+        table_for(details['history'], options['columns'], "Scan history for '#{details['info']['name']}' (#{scan_id})") do |scan|
           options['columns'].map { |column| (column.match('date') && scan[column].is_a?(Integer)) ? Time.at(scan[column]).to_s : scan[column] }
         end
         if details['history'].length > 0

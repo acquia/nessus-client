@@ -33,6 +33,18 @@ module NessusCLI
         end
       end
 
+      def print_result_table(rows, cols, title, date_pattern = 'date')
+        # Protect against empty results.
+        rows ||= []
+        table_for(rows, cols, title) do |r|
+          cols.map { |column| (column.match(date_pattern) && r[column].is_a?(Integer)) ? Time.at(r[column]).to_s : r[column] }
+        end
+        if rows.length > 0
+          columns = rows.first.keys
+          say("Available columns:\n" + columns.join(', '))
+        end
+      end
+
       # Display a table to the user. The provided block should an Array of
       # row values.
       #
@@ -44,7 +56,7 @@ module NessusCLI
       # @yield elem [Object]
       #   The current object in the enumeration.
       # @return nil
-      def self.table_for(enum, cols, title = nil)
+      def table_for(enum, cols, title = nil)
         rows = []
         enum.each do |elem|
           rows << yield(elem)
@@ -68,14 +80,15 @@ module NessusCLI
         method_option :home, :type => :string, :default => ENV['HOME'], :desc => 'Home directory location for credentials file'
       end
   
-      def self.common_list_options
-      end
     end
   end
   
   module Commands
     autoload :Scan, 'nessus-client/cli/scan'
     autoload :Policy, 'nessus-client/cli/policy'
+    autoload :User, 'nessus-client/cli/user'
+    autoload :Plugin, 'nessus-client/cli/plugin'
+    autoload :PluginRule, 'nessus-client/cli/plugin-rule'
   end
 
   class Nessus < Base
@@ -111,5 +124,14 @@ module NessusCLI
   
     desc "policy SUBCOMMAND ...ARGS", "Policy related commands"
     subcommand 'policy', NessusCLI::Commands::Policy
+
+    desc "user SUBCOMMAND ...ARGS", "User related commands"
+    subcommand 'user', NessusCLI::Commands::User
+
+    desc "plugin SUBCOMMAND ...ARGS", "Plugin related commands"
+    subcommand 'plugin', NessusCLI::Commands::Plugin
+
+    desc "plugin-rule SUBCOMMAND ...ARGS", "Plugin related commands"
+    subcommand 'plugin_rule', NessusCLI::Commands::PluginRule
   end
 end

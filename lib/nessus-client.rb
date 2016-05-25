@@ -1,5 +1,6 @@
 require 'excon'
 require 'json'
+require 'nessus-client/version'
 
 class NessusClient
 
@@ -118,7 +119,7 @@ class NessusClient
   def self.retry(opts = {}, &blk)
     opts = {
       delay: 2,
-      timeout: 30,
+      timeout: 300,
       stdout: $stdout,
     }.merge(opts)
 
