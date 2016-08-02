@@ -13,7 +13,7 @@ module NessusCLI
       # @return [Int] numeric permission
       def self.map_scan_permission(name)
         map = scan_permissions
-        fail("Invalid permission '#{naem}'.") unless map[name]
+        fail("Invalid permission '#{name}'.") unless map[name]
         map[name]
       end
 
