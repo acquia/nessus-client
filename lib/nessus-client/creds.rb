@@ -48,7 +48,7 @@ class NessusClient
 
     def fetch_creds
       unless @creds
-        fail("Missing file #{creds_file}") unless File.exist?(@creds_file)
+        fail("Missing file #{@creds_file}") unless File.exist?(@creds_file)
         file_creds = YAML.load(File.read(@creds_file))
         file_creds ||= {}
         ['url', 'secretKey', 'accessKey'].each do |key|
